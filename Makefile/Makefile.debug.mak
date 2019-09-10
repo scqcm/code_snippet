@@ -13,3 +13,7 @@ all:
 	@echo $(subst t,e,maktfilt)
 	@echo $(patsubst %.c,%.o,programA.c programB.c)
 	@echo $(LIGHTWAN_BUILD)
+    $(warning $(origin LIGHTWAN_BUILD))
+    $(warning $(origin ifeq))
+    $(warning $(origin VERSION))
+    
