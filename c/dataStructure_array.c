@@ -11,10 +11,10 @@ main(void)
     char array[10] = {"654321"};
 char *p1 = malloc(3);
 p1[0] = 'a';
-getchar();    
+getchar();
     c_array c = {"zxczxc"};
     p_array p = &array;
-    
+
     printf("%s\n", array);
     return;
 }

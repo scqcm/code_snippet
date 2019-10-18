@@ -1,6 +1,6 @@
 
 /*
- *gcc dl_iterate_phdr.c -ldl 
+ *gcc dl_iterate_phdr.c -ldl
  */
 
 #define _GNU_SOURCE
@@ -11,7 +11,7 @@
 
 static int
 callback(struct dl_phdr_info *info, size_t size, void *data)
-{ 
+{
     int j;
 
     printf("name=%s (%d segments)\n", info->dlpi_name, info->dlpi_phnum);

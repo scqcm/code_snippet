@@ -28,7 +28,7 @@ extern int do_iprule(int argc, char **argv);
 extern int do_iproute(int argc, char **argv);
 
 
-static int 
+static int
 LW_IPOp(
 	__in int ArgCnt,
     __in char *ArgStr,
@@ -38,21 +38,21 @@ LW_IPOp(
     int ret, i;
     char **ArgStrArray = NULL;
     char *saveptr = NULL;
-    
+
     if ((NULL == ArgStr) || (ArgCnt <= 0))
         return -1;
-    
-    fprintf(stderr,"[%s-%d]""CMD:%s(%d).\n", 
+
+    fprintf(stderr,"[%s-%d]""CMD:%s(%d).\n",
             __FUNCTION__, __LINE__, ArgStr, ArgCnt);
-            
+
     ArgStrArray = (char **)malloc((ArgCnt+1) * sizeof(char *));
     if (NULL == ArgStrArray)
     {
-        fprintf(stderr,"[%s-%d]""couldn't malloc memory-ArgStrArray. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""couldn't malloc memory-ArgStrArray. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     i = 0;
     ArgStrArray[i++] = strtok_r(ArgStr, delim, &saveptr);
     for (; i < ArgCnt; i++)
@@ -65,7 +65,7 @@ LW_IPOp(
 
     if (rtnl_open(&rth, 0) < 0)
         goto CommonReturn;
-    
+
     ret = (*Func)(i, ArgStrArray);
     rtnl_close(&rth);
 
@@ -83,7 +83,7 @@ CommonReturn:
  *      Modify routing table
  *
  * INPUTS:
- *      ArgCnt: argument cnt ,separated by space. 
+ *      ArgCnt: argument cnt ,separated by space.
  *      ArgAtr: argument string
  * RETURN:
  *     !0    failed
@@ -92,7 +92,7 @@ CommonReturn:
  *      ip route replace default nexthop via xxx dev xxx
  *      char argstr[] = "replace default nexthop via 10.1.4.1 dev eno16777736";
  ******************************************************************************/
-int 
+int
 LW_IPRouteOp(
 	__in int ArgCnt,
     __in char *ArgStr
@@ -108,7 +108,7 @@ LW_IPRouteOp(
  *      Modify rule table
  *
  * INPUTS:
- *      ArgCnt: argument cnt ,separated by space. 
+ *      ArgCnt: argument cnt ,separated by space.
  *      ArgAtr: argument string
  * RETURN:
  *     !0    failed
@@ -117,7 +117,7 @@ LW_IPRouteOp(
  *      ip rule add table 231 prio 1000
  *      char argstriprule[] = "add table 231 prio 1000";
  ******************************************************************************/
-int 
+int
 LW_IPRuleOp(
 	__in int ArgCnt,
     __in char *ArgStr
@@ -133,7 +133,7 @@ LW_IPRuleOp(
  *      Modify ip address
  *
  * INPUTS:
- *      ArgCnt: argument cnt ,separated by space. 
+ *      ArgCnt: argument cnt ,separated by space.
  *      ArgAtr: argument string
  * RETURN:
  *     !0    failed
@@ -142,7 +142,7 @@ LW_IPRuleOp(
  *      ip rule add table 231 prio 1000
  *      char argstriprule[] = "table 231 prio 1000";
  ******************************************************************************/
-int 
+int
 LW_IPAddressOp(
 	__in int ArgCnt,
     __in char *ArgStr

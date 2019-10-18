@@ -32,10 +32,10 @@ struct dir_list
   ino_t ino;
   dev_t dev;
 };
-    
+
 static int
 copy_internal (
-    char    *SrcName, 
+    char    *SrcName,
     char    *DstName,
     struct dir_list *ancestors
     );
@@ -116,7 +116,7 @@ strip_trailing_slashes (char *file)
 
     if (! *base)
         base = file;
-    
+
     len = strlen(base);
     base_lim = base + len - 1;
     had_slash = (*base_lim == '/');
@@ -133,17 +133,17 @@ strip_trailing_slashes (char *file)
             break;
         }
     }
-    
+
     return had_slash;
 }
 
 static bool
 sparse_copy (
-    int src_fd, 
-    int dest_fd, 
-    char *buf, 
+    int src_fd,
+    int dest_fd,
+    char *buf,
     size_t buf_size,
-    char const *src_name, 
+    char const *src_name,
     char const *dst_name,
     unsigned long max_n_read
     )
@@ -157,7 +157,7 @@ sparse_copy (
         {
             if (errno == EINTR)
                 continue;
-            fprintf(stderr,"[%s-%d]""failed to read %s. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""failed to read %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, src_name, strerror(errno));
             return false;
         }
@@ -173,13 +173,13 @@ sparse_copy (
             size_t n_rw = write(dest_fd, ptr, n);
             if (n_rw < 0)
             {
-                if (errno == EINTR) 
+                if (errno == EINTR)
                 {
                     continue;
                 }
                 else
                 {
-                    fprintf(stderr,"[%s-%d]""failed to write %s. error_string:%s.\n", 
+                    fprintf(stderr,"[%s-%d]""failed to write %s. error_string:%s.\n",
                         __FUNCTION__, __LINE__, src_name, strerror(errno));
                     return false;
                 }
@@ -194,9 +194,9 @@ sparse_copy (
 
 static bool
 copy_reg (
-    char const *SrcName, 
+    char const *SrcName,
     char const *DstName,
-    mode_t dst_mode, 
+    mode_t dst_mode,
     mode_t omitted_permissions,
     struct stat const *src_sb
     )
@@ -220,7 +220,7 @@ copy_reg (
 
     if (fstat (source_desc, &src_open_sb) != 0)
     {
-        fprintf(stderr,"[%s-%d]""cannot fstat %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""cannot fstat %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return_val = false;
         goto close_src_desc;
@@ -237,8 +237,8 @@ copy_reg (
 
     int open_flags = O_WRONLY | O_CREAT;
     /*
-        O_EXCL Ensure that this call creates the file: 
-        if this flag is specified in conjunction with O_CREAT, 
+        O_EXCL Ensure that this call creates the file:
+        if this flag is specified in conjunction with O_CREAT,
         and pathname already exists, then open() will fail.
     */
     dest_desc = open (DstName, open_flags | O_EXCL, dst_mode & ~omitted_permissions);
@@ -246,7 +246,7 @@ copy_reg (
 
     if (dest_desc < 0 && dest_errno == EEXIST)
     {
-        fprintf(stderr,"[%s-%d]""Dst file %s exists. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""Dst file %s exists. error_string:%s.\n",
             __FUNCTION__, __LINE__, DstName, strerror(errno));
         return_val = false;
         goto close_src_desc;
@@ -258,7 +258,7 @@ copy_reg (
 
     if (dest_desc < 0)
     {
-        fprintf(stderr,"[%s-%d]""cannot create regular file %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""cannot create regular file %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, DstName, strerror(errno));
         return_val = false;
         goto close_src_desc;
@@ -266,7 +266,7 @@ copy_reg (
 
     if (fstat (dest_desc, &sb) != 0)
     {
-        fprintf(stderr,"[%s-%d]""cannot fstat %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""cannot fstat %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, DstName, strerror(errno));
         return_val = false;
         goto close_src_and_dst_desc;
@@ -283,7 +283,7 @@ copy_reg (
     buf_alloc = malloc (buf_size + buf_alignment_slop);
     if (NULL == buf_alloc)
     {
-        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return_val = false;
         goto close_src_and_dst_desc;
@@ -310,14 +310,14 @@ copy_reg (
     close_src_and_dst_desc:
     if (close (dest_desc) < 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to close %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to close %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, DstName, strerror(errno));
         return_val = false;
     }
     close_src_desc:
     if (close (source_desc) < 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to close %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to close %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return_val = false;
     }
@@ -347,7 +347,7 @@ streamsavedir (DIR *dirp)
     name_space = (char *)malloc(allocated);
     if(NULL == name_space)
     {
-        fprintf(stderr,"[%s-%d]""mallic fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""mallic fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return NULL;
     }
@@ -393,7 +393,7 @@ streamsavedir (DIR *dirp)
                 name_space_temp = realloc (name_space, allocated);
                 if(NULL == name_space_temp)
                 {
-                    fprintf(stderr,"[%s-%d]""reallic fail. error_string:%s.\n", 
+                    fprintf(stderr,"[%s-%d]""reallic fail. error_string:%s.\n",
                         __FUNCTION__, __LINE__, strerror(errno));
                     if (NULL != name_space)
                         free(name_space);
@@ -408,7 +408,7 @@ streamsavedir (DIR *dirp)
             used += entry_size;
         }
     }
-    
+
     name_space[used] = '\0';
     return name_space;
 }
@@ -424,15 +424,15 @@ savedir (
 {
     DIR *dirp = NULL;
     char *name_space = NULL;
-    
+
     dirp = opendir (dir);
     if(NULL == dirp)
     {
-        fprintf(stderr,"[%s-%d]""opendir fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""opendir fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return NULL;
     }
-    
+
     name_space = streamsavedir (dirp);
     if (dirp && (closedir (dirp) != 0))
     {
@@ -456,7 +456,7 @@ savedir (
 
 static bool
 copy_dir (
-    char *src_name_in, 
+    char *src_name_in,
     char *dst_name_in,
     struct dir_list *ancestors
     )
@@ -473,7 +473,7 @@ copy_dir (
     {
         /* This diagnostic is a bit vague because savedir can fail in
         several different ways.  */
-        fprintf(stderr,"[%s-%d]""cannot access %s.\n", 
+        fprintf(stderr,"[%s-%d]""cannot access %s.\n",
             __FUNCTION__, __LINE__, src_name_in);
         return false;
     }
@@ -483,7 +483,7 @@ copy_dir (
     src_name = (char *)malloc(size_src);
     if (NULL == src_name)
     {
-        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return false;
     }
@@ -491,13 +491,13 @@ copy_dir (
     memcpy(src_name, src_name_in, strlen(src_name_in));
     *(src_name + strlen(src_name_in)) = '/';
     size_src = strlen(src_name_in) + 1;
-    
+
     size_dst = strlen(dst_name_in) + 1 + NAME_MAX + 1;
     strip_trailing_slashes (dst_name_in);
     dst_name = (char *)malloc(size_dst);
     if (NULL == dst_name)
     {
-        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return false;
     }
@@ -505,13 +505,13 @@ copy_dir (
     memcpy(dst_name, dst_name_in, strlen(dst_name_in));
     *(dst_name + strlen(dst_name_in)) = '/';
     size_dst = strlen(dst_name_in) + 1;
-    
+
     namep = name_space;
     while (*namep != '\0')
     {
         memcpy(src_name + size_src, namep, strlen(namep));
         *(src_name + size_src + strlen(namep)) = '\0';
-        
+
         memcpy(dst_name + size_dst, namep, strlen(namep));
         *(dst_name + size_dst + strlen(namep)) = '\0';
 
@@ -528,7 +528,7 @@ copy_dir (
 
 static int
 copy_internal (
-    char    *SrcName, 
+    char    *SrcName,
     char    *DstName,
     struct dir_list *ancestors
     )
@@ -543,7 +543,7 @@ copy_internal (
 
     if (stat (SrcName, &src_sb) != 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return -1;
     }
@@ -568,7 +568,7 @@ copy_internal (
 
         if (is_ancestor (&src_sb, ancestors))
         {
-            fprintf(stderr,"[%s-%d]""cannot copy cyclic symbolic link %s.\n", 
+            fprintf(stderr,"[%s-%d]""cannot copy cyclic symbolic link %s.\n",
                 __FUNCTION__, __LINE__, SrcName);
             goto un_backup;
         }
@@ -584,7 +584,7 @@ copy_internal (
         decide what to do with S_ISUID | S_ISGID | S_ISVTX.  */
         if (mkdir (DstName, dst_mode_bits & ~omitted_permissions) != 0)
         {
-            fprintf(stderr,"[%s-%d]""cannot create directory %s. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""cannot create directory %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, DstName, strerror(errno));
             goto un_backup;
         }
@@ -595,7 +595,7 @@ copy_internal (
 
         if (lstat (DstName, &dst_sb) != 0)
         {
-            fprintf(stderr,"[%s-%d]""cannot stat %s. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""cannot stat %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, DstName, strerror(errno));
             goto un_backup;
         }
@@ -607,7 +607,7 @@ copy_internal (
 
             if (lchmod (DstName, dst_mode | S_IRWXU) != 0)
             {
-                fprintf(stderr,"[%s-%d]""cannot stat %s. error_string:%s.\n", 
+                fprintf(stderr,"[%s-%d]""cannot stat %s. error_string:%s.\n",
                     __FUNCTION__, __LINE__, DstName, strerror(errno));
                 goto un_backup;
             }
@@ -657,11 +657,11 @@ un_backup:
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoCopy (
-    __in char    *SrcName, 
+    __in char    *SrcName,
     __in char    *DstName,
     __in bool    IsRecursive
     )
@@ -672,33 +672,33 @@ LW_DoCopy (
     char *temp;
     char *srcName;
     char *dstName;
-    
+
     srcName = (char *)malloc(strlen(SrcName) + 1);
     if(NULL == srcName)
     {
-        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return -1;
     }
-    
+
     memset(srcName, 0, (strlen(SrcName) + 1));
     memcpy(srcName, SrcName, strlen(SrcName));
-   
+
     dstName = (char *)malloc(strlen(DstName) + 1);
     if(NULL == dstName)
     {
-        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n",
             __FUNCTION__, __LINE__, dstName, strerror(errno));
         return -1;
     }
-    
+
     memset(dstName, 0, (strlen(DstName) + 1));
     memcpy(dstName, DstName, strlen(DstName));
-    
+
     strip_trailing_slashes (srcName);
     if (stat (srcName, &srcStat) != 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to access %s error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to access %s error_string:%s.\n",
             __FUNCTION__, __LINE__, srcName, strerror(errno));
         return -1;
     }
@@ -708,18 +708,18 @@ LW_DoCopy (
         fprintf(stderr,"[%s-%d]""omitting directory %s.", __FUNCTION__, __LINE__, SrcName);
         return -1;
     }
-    
+
     if (stat (dstName, &dstStat)!= 0)
     {
         if (errno != ENOENT)
         {
-            fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, dstName, strerror(errno));
             return -1;
         }
         else
         {
-            fprintf(stderr,"[%s-%d]""%s does not exist. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""%s does not exist. error_string:%s.\n",
                 __FUNCTION__, __LINE__, dstName, strerror(errno));
             return -1;
         }
@@ -728,20 +728,20 @@ LW_DoCopy (
     {
         if (!S_ISDIR (dstStat.st_mode))
         {
-            fprintf(stderr,"[%s-%d]""%s does not a directory. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""%s does not a directory. error_string:%s.\n",
                 __FUNCTION__, __LINE__, dstName, strerror(errno));
             return -1;
             /*
             if (S_ISDIR (srcMode))
             {
-                fprintf(stderr,"[%s-%d]""cannot overwrite non-directory %s with directory %s", 
+                fprintf(stderr,"[%s-%d]""cannot overwrite non-directory %s with directory %s",
                     __FUNCTION__, __LINE__, dstName, srcName);
                 return -1;
             }
             */
         }
     }
-    
+
     char arg_base[NAME_MAX] = {0};
     char *target_directory;
     temp = last_component (srcName);
@@ -752,13 +752,13 @@ LW_DoCopy (
         fprintf(stderr,"[%s-%d]""does not support %s.", __FUNCTION__, __LINE__, arg_base);
         return -1;
     }
-    
+
     size = strlen(dstName) + 1 + NAME_MAX + 1;
     strip_trailing_slashes (dstName);
     target_directory = (char *)malloc(size);
     if (NULL == target_directory)
     {
-        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""malloc fail. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
@@ -770,7 +770,7 @@ LW_DoCopy (
     fprintf(stderr,"[%s-%d]""srcName = %s, target_directory = %s.\n",
         __FUNCTION__, __LINE__, srcName, target_directory);
     ret = copy_internal(srcName, target_directory, NULL);
-    
+
     free(target_directory);
     return ret;
 }
@@ -779,8 +779,8 @@ LW_DoCopy (
 /*
  *rm - remove files or directories
  */
- 
-static int 
+
+static int
 rm_internal(
     char* Name
     )
@@ -789,24 +789,24 @@ rm_internal(
 	DIR *dir;
 	struct dirent *de;
 	int ret = 0;
-    
+
     strip_trailing_slashes (Name);
 	/* is it a file or directory? */
 	if (lstat(Name, &st) < 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n", 
-                __FUNCTION__, __LINE__, Name, strerror(errno));          
+        fprintf(stderr,"[%s-%d]""failed to access %s. error_string:%s.\n",
+                __FUNCTION__, __LINE__, Name, strerror(errno));
 		return -1;
     }
- 
+
 	/* a file, so unlink it */
 	if (!S_ISDIR(st.st_mode))
     {
         ret = unlink(Name);
         if (0 != ret)
         {
-            fprintf(stderr,"[%s-%d]""failed to unlink %s. error_string:%s.\n", 
-                __FUNCTION__, __LINE__, Name, strerror(errno));          
+            fprintf(stderr,"[%s-%d]""failed to unlink %s. error_string:%s.\n",
+                __FUNCTION__, __LINE__, Name, strerror(errno));
             return -1;
         }
         else
@@ -814,16 +814,16 @@ rm_internal(
             return 0;
         }
     }
- 
+
 	/* a directory, so open handle */
 	dir = opendir(Name);
 	if (dir == NULL)
 	{
-        fprintf(stderr,"[%s-%d]""failed to open dir %s. error_string:%s.\n", 
-                __FUNCTION__, __LINE__, Name, strerror(errno));          
+        fprintf(stderr,"[%s-%d]""failed to open dir %s. error_string:%s.\n",
+                __FUNCTION__, __LINE__, Name, strerror(errno));
 		return -1;
     }
- 
+
 	/* recurse over components */
 	errno = 0;
 	while ((de = readdir(dir)) != NULL) {
@@ -840,7 +840,7 @@ rm_internal(
 
 	if ((0 == ret) && (0 != errno))
     {
-        fprintf(stderr,"[%s-%d]""failed to read dir %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to read dir %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, Name, strerror(errno));
         closedir(dir);
 		return -1;
@@ -850,14 +850,14 @@ rm_internal(
         closedir(dir);
         return -1;
     }
- 
+
 	/* close directory handle */
 	closedir(dir);
 	/* delete target directory */
 	ret = rmdir(Name);
     if(0 != ret)
     {
-        fprintf(stderr,"[%s-%d]""failed to rm dir %s. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to rm dir %s. error_string:%s.\n",
                 __FUNCTION__, __LINE__, Name, strerror(errno));
 		return -1;
     }
@@ -880,21 +880,21 @@ rm_internal(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoRm (
-    char    *SrcName, 
+    char    *SrcName,
     bool    IsRecursive
     )
 {
     struct stat srcStat;
     int ret;
     char *name;
-    
+
     if (stat (SrcName, &srcStat) != 0)
     {
-        fprintf(stderr,"[%s-%d]""failed to access %s error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to access %s error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return -1;
     }
@@ -904,20 +904,20 @@ LW_DoRm (
         fprintf(stderr,"[%s-%d]""omitting directory %s.", __FUNCTION__, __LINE__, SrcName);
         return -1;
     }
-    
+
     name = (char *)malloc(strlen(SrcName) + 1);
     if(NULL == name)
     {
-        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""failed to alloc memory(%s). error_string:%s.\n",
             __FUNCTION__, __LINE__, SrcName, strerror(errno));
         return -1;
     }
-    
+
     memset(name, 0, (strlen(SrcName) + 1));
     memcpy(name, SrcName, strlen(SrcName));
-    
+
     ret = rm_internal(name);
-    
+
     free(name);
     return ret;
 }
@@ -926,28 +926,28 @@ LW_DoRm (
 /*
  *rm - process operation
  */
- 
+
 static int P_pid;
 static char P_cmd[16];
 
-static int 
+static int
 stat2proc(
     int pid
-    ) 
+    )
 {
     char buf[800]; /* about 40 fields, 64-bit decimal is about 20 chars */
     int num, fd;
     char* tmp;
-    
+
     snprintf(buf, 32, "/proc/%d/stat", pid);
-    if ((fd = open(buf, O_RDONLY, 0)) == -1) 
+    if ((fd = open(buf, O_RDONLY, 0)) == -1)
         return 0;
     num = read(fd, buf, sizeof(buf) - 1);
     close(fd);
-    
-    if (num < 80) 
+
+    if (num < 80)
         return 0;
-    
+
     buf[num] = '\0';
     tmp = strrchr(buf, ')');      /* split into "PID (cmd" and "<rest>" */
     *tmp = '\0';                  /* replace trailing ')' with NUL */
@@ -955,7 +955,7 @@ stat2proc(
     memset(P_cmd, 0, sizeof P_cmd);          /* clear */
     sscanf(buf, "%d (%15c", &P_pid, P_cmd);  /* comm[16] in kernel */
 
-    if(P_pid != pid) 
+    if(P_pid != pid)
         return 0;
     else
         return 1;
@@ -965,7 +965,7 @@ stat2proc(
  * NAME:  LW_IsProcessExist
  *
  * DESCRIPTION:
- *      test if the process with specified name exist. 
+ *      test if the process with specified name exist.
  *
  * INPUTS:
  *      Name: the process name.
@@ -973,7 +973,7 @@ stat2proc(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_IsProcessExist (
@@ -984,17 +984,17 @@ LW_IsProcessExist (
     DIR *dir;
     char name[16] = {0};
     int ret = 0;
-    
+
     memcpy(name, Name, 15);
     name[15] = '\0';
-    
+
     dir = opendir("/proc");
     while(( ent = readdir(dir) )){
         if (ent->d_name[0] > '9')
 			continue;
 		if (ent->d_name[0] < '1')
 			continue;
-        if(!stat2proc(atoi(ent->d_name))) 
+        if(!stat2proc(atoi(ent->d_name)))
             continue;
         ret = strcmp(P_cmd, name);
         if(0 == ret)
@@ -1002,10 +1002,10 @@ LW_IsProcessExist (
             ret = P_pid;
             break;
         }
-        
+
     }
     closedir(dir);
-    
+
     return ret;
 }
 
@@ -1013,7 +1013,7 @@ LW_IsProcessExist (
  * NAME:  LW_KillProcess
  *
  * DESCRIPTION:
- *      terminate a process. 
+ *      terminate a process.
  *
  * INPUTS:
  *      Pid: the process pid.
@@ -1021,7 +1021,7 @@ LW_IsProcessExist (
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_KillProcess (
@@ -1030,6 +1030,6 @@ LW_KillProcess (
 {
     if(Pid <= 0)
         return -1;
-    
+
     return kill(Pid, SIGKILL);
 }

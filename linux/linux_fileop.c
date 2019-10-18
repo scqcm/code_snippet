@@ -12,10 +12,10 @@ main(void)
 {
     int fd = -1;
     int ret = 0;
-    
+
     long sizepage = sysconf (_SC_PAGESIZE);
     printf("sizepage = %d\n", sizepage);
-getchar(); 
+getchar();
 	char * FilePath = "/home/num.txt";
     int open_flags = O_WRONLY | O_CREAT | O_EXCL;
     fd = open(FilePath, open_flags);
@@ -25,13 +25,13 @@ getchar();
         ret = -1;
         goto CommonReturn;
     }
-    
+
 CommonReturn:
     if(fd >= 0)
     {
         close(fd);
     }
-    return;      
+    return;
 }
 
 

@@ -50,7 +50,7 @@ struct ethtool_cmd {
  * NAME:  LW_DoEthSet
  *
  * DESCRIPTION:
- *      control network device driver and hardware settings, 
+ *      control network device driver and hardware settings,
  *      particularly for wired Ethernet devices.
  *
  * INPUTS:
@@ -62,7 +62,7 @@ struct ethtool_cmd {
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoEthSet(
@@ -80,20 +80,20 @@ LW_DoEthSet(
     int gset_changed = 0;
     int fd;
     int ret = 0;
-    
+
     if (strlen(IfName) >= IFNAMSIZ)
     {
-        fprintf(stderr,"[%s-%d]""ifname(%s) is toolong.\n", 
+        fprintf(stderr,"[%s-%d]""ifname(%s) is toolong.\n",
             __FUNCTION__, __LINE__, IfName);
         return -1;
     }
     memcpy(ifr.ifr_name, IfName, strlen(IfName));
     ifr.ifr_name[strlen(IfName)] = '\0';
-    
+
     fd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (fd < 0)
     {
-        fprintf(stderr,"[%s-%d]""Fail to create socket. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""Fail to create socket. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
@@ -116,7 +116,7 @@ LW_DoEthSet(
            speed_wanted = LW_INFSPEED_10000;
            break;
     }
-    
+
     switch (DuplexWanted)
     {
         case LW_INFDUPLEX_HALF:
@@ -126,7 +126,7 @@ LW_DoEthSet(
            duplex_wanted = LW_INFDUPLEX_FULL;
            break;
     }
-    
+
     switch (AutonegWanted)
     {
         case LW_INFAUTONEG_DISABLE:
@@ -140,13 +140,13 @@ LW_DoEthSet(
     ecmd.cmd = ETHTOOL_GSET;
     ifr.ifr_data = (void*)&ecmd;
     ret = ioctl(fd, SIOCETHTOOL, &ifr);
-    if (ret < 0) 
+    if (ret < 0)
     {
-        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n",
             __FUNCTION__, __LINE__, IfName, strerror(errno));
         return -1;
     }
-        
+
     if (speed_wanted != LW_INFSPEED_UNKNOWN)
     {
         ecmd.speed = (uint16_t)speed_wanted;
@@ -163,16 +163,16 @@ LW_DoEthSet(
         ecmd.autoneg = autoneg_wanted;
         gset_changed = 1;
     }
-            
-    if (gset_changed) 
+
+    if (gset_changed)
     {
         /* Try to perform the update. */
         ecmd.cmd = ETHTOOL_SSET;
         ifr.ifr_data = (void*)&ecmd;
         ret = ioctl(fd, SIOCETHTOOL, &ifr);
-        if (ret < 0) 
+        if (ret < 0)
         {
-            fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n", 
+            fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n",
                 __FUNCTION__, __LINE__, IfName, strerror(errno));
             ret = -1;
         }
@@ -183,18 +183,18 @@ LW_DoEthSet(
 	}
     else
     {
-        fprintf(stderr,"[%s-%d]""%s: Have nothing to do.\n", 
+        fprintf(stderr,"[%s-%d]""%s: Have nothing to do.\n",
                 __FUNCTION__, __LINE__, IfName);
         ret = -1;
     }
-    
+
     return ret;
 }
 
 
 static int skfd = -1;
 
-static int 
+static int
 set_flag(
     char *ifname, /*strlen(ifname) < IFNAMSIZ*/
     short flag
@@ -205,16 +205,16 @@ set_flag(
     memcpy(ifr.ifr_name, ifname, strlen(ifname));
     ifr.ifr_name[strlen(ifname)] = '\0';
     if (ioctl(skfd, SIOCGIFFLAGS, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n",
             __FUNCTION__, __LINE__, ifname, strerror(errno));
         return (-1);
     }
-    
+
     memcpy(ifr.ifr_name, ifname, strlen(ifname));
     ifr.ifr_name[strlen(ifname)] = '\0';
     ifr.ifr_flags |= flag;
     if (ioctl(skfd, SIOCSIFFLAGS, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n",
             __FUNCTION__, __LINE__, ifname, strerror(errno));
         return -1;
     }
@@ -222,9 +222,9 @@ set_flag(
 }
 
 /* Clear a certain interface flag. */
-static int 
+static int
 clr_flag(
-    char *ifname, 
+    char *ifname,
     short flag
     )
 {
@@ -232,7 +232,7 @@ clr_flag(
     int fd;
 
     if (strchr(ifname, ':')) {
-        fprintf(stderr,"[%s-%d]""%s: No support for INET on this system.\n", 
+        fprintf(stderr,"[%s-%d]""%s: No support for INET on this system.\n",
             __FUNCTION__, __LINE__, ifname);
 	    return -1;
 	}
@@ -241,7 +241,7 @@ clr_flag(
     memcpy(ifr.ifr_name, ifname, strlen(ifname));
     ifr.ifr_name[strlen(ifname)] = '\0';
     if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""%s: ERROR while getting interface flags. error_string:%s.\n",
             __FUNCTION__, __LINE__, ifname, strerror(errno));
         return -1;
     }
@@ -249,7 +249,7 @@ clr_flag(
     ifr.ifr_name[strlen(ifname)] = '\0';
     ifr.ifr_flags &= ~flag;
     if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""%s: ERROR while setting interface flags. error_string:%s.\n",
             __FUNCTION__, __LINE__, ifname, strerror(errno));
         return -1;
     }
@@ -268,7 +268,7 @@ clr_flag(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoIfUp(
@@ -278,21 +278,21 @@ LW_DoIfUp(
     int ret = 0;
     if (strlen(IfName) >= IFNAMSIZ)
     {
-        fprintf(stderr,"[%s-%d]""IfName is toolong.\n", 
+        fprintf(stderr,"[%s-%d]""IfName is toolong.\n",
             __FUNCTION__, __LINE__);
         return -1;
     }
-    
+
     skfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (skfd < 0)
     {
-        fprintf(stderr,"[%s-%d]""Fail to create socket. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""Fail to create socket. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     ret = set_flag(IfName, (IFF_UP | IFF_RUNNING));
-    
+
     (void) close(skfd);
     return ret;
 }
@@ -309,7 +309,7 @@ LW_DoIfUp(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoIfDown(
@@ -319,21 +319,21 @@ LW_DoIfDown(
     int ret = 0;
     if (strlen(IfName) >= IFNAMSIZ)
     {
-        fprintf(stderr,"[%s-%d]""IfName is toolong.\n", 
+        fprintf(stderr,"[%s-%d]""IfName is toolong.\n",
             __FUNCTION__, __LINE__);
         return -1;
     }
-    
+
     skfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (skfd < 0)
     {
-        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     ret = clr_flag(IfName, IFF_UP);
-    
+
     (void) close(skfd);
     return ret;
 }
@@ -351,48 +351,48 @@ LW_DoIfDown(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoSetMtu(
-    char *IfName, 
+    char *IfName,
     int mtu
     )
 {
     struct ifreq ifr;
     int ret = 0;
-    
+
     if (strlen(IfName) >= IFNAMSIZ)
     {
-        fprintf(stderr,"[%s-%d]""IfName is toolong.\n", 
+        fprintf(stderr,"[%s-%d]""IfName is toolong.\n",
             __FUNCTION__, __LINE__);
         return -1;
     }
     skfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (skfd < 0)
     {
-        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     memcpy(ifr.ifr_name, IfName, strlen(IfName));
     ifr.ifr_name[strlen(IfName)] = '\0';
     ifr.ifr_mtu = mtu;
     if (ioctl(skfd, SIOCSIFMTU, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""SIOCSIFMTU. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""SIOCSIFMTU. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         ret = -1;
 	}
-    
+
     (void) close(skfd);
     return ret;
 }
 
 /*转换MAC地址格式，文本->二级制*/
-static int 
+static int
 in_ether(
-    char *bufp, 
+    char *bufp,
     struct sockaddr *sap
     )
 {
@@ -405,7 +405,7 @@ in_ether(
     ptr = sap->sa_data;
 
     i = 0;
-    while ((*bufp != '\0') && (i < ETH_ALEN)) 
+    while ((*bufp != '\0') && (i < ETH_ALEN))
     {
         val = 0;
         c = *bufp++;
@@ -460,11 +460,11 @@ in_ether(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DoSetEtherMac(
-    __in char *IfName, 
+    __in char *IfName,
     __in char *Mac
     )
 {
@@ -472,10 +472,10 @@ LW_DoSetEtherMac(
     int ret = 0;
     struct sockaddr_storage _sa;
     struct sockaddr *sa = (struct sockaddr *)&_sa;
-    
+
     if (strlen(IfName) >= IFNAMSIZ)
     {
-        fprintf(stderr,"[%s-%d]""IfName is toolong.\n", 
+        fprintf(stderr,"[%s-%d]""IfName is toolong.\n",
             __FUNCTION__, __LINE__);
         return -1;
     }
@@ -484,25 +484,25 @@ LW_DoSetEtherMac(
     {
         return -1;
     }
-    
+
     skfd = socket(AF_UNIX, SOCK_DGRAM, 0);
     if (skfd < 0)
     {
-        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     memcpy(ifr.ifr_name, IfName, strlen(IfName));
     ifr.ifr_name[strlen(IfName)] = '\0';
     memcpy(&ifr.ifr_hwaddr, sa, sizeof(struct sockaddr));
-    
+
     if (ioctl(skfd, SIOCSIFHWADDR, &ifr) < 0) {
-        fprintf(stderr,"[%s-%d]""SIOCSIFHWADDR. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""SIOCSIFHWADDR. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         ret = -1;
 	}
-    
+
     (void) close(skfd);
     return ret;
 }
@@ -520,7 +520,7 @@ LW_DoSetEtherMac(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_AddArpItem(
@@ -539,42 +539,42 @@ LW_AddArpItem(
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0)
     {
-        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     memset((char *) &req, 0, sizeof(req));
     sa_in = (struct sockaddr_in *)&ss;
-    
+
     sa_in->sin_family = AF_INET;
     sa_in->sin_port = 0;
 
     /* Default is special, meaning 0.0.0.0. */
-    if (!strcmp(IPAddr, "default")) 
+    if (!strcmp(IPAddr, "default"))
     {
         sa_in->sin_addr.s_addr = INADDR_ANY;
     }
-    
+
     /* Look to see if it's a dotted quad. */
-    if ( 0 == inet_aton(IPAddr, &sa_in->sin_addr)) 
+    if ( 0 == inet_aton(IPAddr, &sa_in->sin_addr))
     {
         return -1;
     }
     memcpy((char *) &req.arp_pa, (char *) sa_in, sizeof(struct sockaddr));
-    
+
     ret = in_ether(EtherAddr, &req.arp_ha);
     if(0 != ret)
     {
         return -1;
     }
-    
+
     /* Fill in the remainder of the request. */
     req.arp_flags = ATF_PERM | ATF_COM;
     memcpy(req.arp_dev, device, sizeof(req.arp_dev));
-    
+
     if (ioctl(fd, SIOCSARP, &req) < 0) {
-        fprintf(stderr,"[%s-%d]""SIOCSARP. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""SIOCSARP. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
     }
 
@@ -594,7 +594,7 @@ LW_AddArpItem(
  *     !0    failed
  *      0   succeed
  *EXAMPLE:
- *      
+ *
  ******************************************************************************/
 int
 LW_DelArpItem(
@@ -610,37 +610,37 @@ LW_DelArpItem(
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0)
     {
-        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""No usable address families found. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
         return -1;
     }
-    
+
     memset((char *) &req, 0, sizeof(req));
     sa_in = (struct sockaddr_in *)&ss;
-    
+
     sa_in->sin_family = AF_INET;
     sa_in->sin_port = 0;
 
     /* Default is special, meaning 0.0.0.0. */
-    if (!strcmp(IPAddr, "default")) 
+    if (!strcmp(IPAddr, "default"))
     {
         sa_in->sin_addr.s_addr = INADDR_ANY;
     }
-    
+
     /* Look to see if it's a dotted quad. */
-    if ( 0 == inet_aton(IPAddr, &sa_in->sin_addr)) 
+    if ( 0 == inet_aton(IPAddr, &sa_in->sin_addr))
     {
         return -1;
     }
-    
+
     memcpy((char *) &req.arp_pa, (char *) sa_in, sizeof(struct sockaddr));
-    
+
     /* Fill in the remainder of the request. */
     req.arp_flags = ATF_PERM;
     memset(req.arp_dev, 0, sizeof(req.arp_dev));
-    
+
     if (ioctl(fd, SIOCDARP, &req) < 0) {
-        fprintf(stderr,"[%s-%d]""SIOCDARP. error_string:%s.\n", 
+        fprintf(stderr,"[%s-%d]""SIOCDARP. error_string:%s.\n",
             __FUNCTION__, __LINE__, strerror(errno));
     }
 

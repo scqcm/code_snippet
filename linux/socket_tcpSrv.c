@@ -8,22 +8,22 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/shm.h>
- 
+
 #define MYPORT  9999
 #define QUEUE   20
 #define BUFFER_SIZE 1024
- 
+
 int main()
 {
     ///定义sockfd
     int server_sockfd = socket(AF_INET,SOCK_STREAM, 0);
-    
+
     ///定义sockaddr_in
     struct sockaddr_in server_sockaddr;
     server_sockaddr.sin_family = AF_INET;
     server_sockaddr.sin_port = htons(MYPORT);
     server_sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    
+
     //调高端口的重用性
     int on;
     if(setsockopt(server_sockfd,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int))<<0)
@@ -31,14 +31,14 @@ int main()
         perror("setsockopt error\n");
         return 0;
     }
-    
+
     ///bind，成功返回0，出错返回-1
     if(bind(server_sockfd,(struct sockaddr *)&server_sockaddr,sizeof(server_sockaddr))==-1)
     {
         perror("bind");
         exit(1);
     }
-    
+
     printf("监听%d端口\n",MYPORT);
     ///listen，成功返回0，出错返回-1
     if(listen(server_sockfd,QUEUE) == -1)
@@ -46,12 +46,12 @@ int main()
         perror("listen");
         exit(1);
     }
-    
+
     ///客户端套接字
     char buffer[BUFFER_SIZE];
     struct sockaddr_in client_addr;
     socklen_t length = sizeof(client_addr);
-    
+
     printf("等待客户端连接\n");
     ///成功返回非负描述字，出错返回-1
     int conn = accept(server_sockfd, (struct sockaddr*)&client_addr, &length);
@@ -61,7 +61,7 @@ int main()
         exit(1);
     }
     printf("客户端成功连接\n");
-    
+
     int i = 3;
     while(i--)
     {

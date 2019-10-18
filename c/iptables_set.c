@@ -87,8 +87,8 @@ void
 popen_cmd(char *cmd)
 {
     FILE *fp_cmd;
-    
-    
+
+
     fp_cmd = popen(cmd, "r");
     if (fp_cmd != NULL) {
         syslog(LOG_INFO, "%s. pass success.\n", cmd);
@@ -110,9 +110,9 @@ main(int argc, char **argv)
     char line_buf[1024];
     FILE *fp;
     FILE *fp_cmd;
-    
+
     openlog(0, LOG_CONS|LOG_NDELAY|LOG_PID, LOG_USER);
-    
+
 	/* parse application arguments */
 	ret = parse_args(argc, argv);
 	if (ret < 0) {
@@ -126,7 +126,7 @@ main(int argc, char **argv)
             __FUNCTION__, __LINE__, NGMIMIC_FILEPATH, strerror(errno));
         return 0;
     }
-    
+
     i = 0;
     fgets(line_buf, 1000, fp);
     while (fgets(line_buf, 1000, fp) != NULL) {
@@ -135,13 +135,13 @@ main(int argc, char **argv)
         temp_name[255] = '\0';
         if (0 == ret) {
             continue;
-        }      
-        
+        }
+
         ret = sscanf(line_buf, "%*[^ ]%*[ ]%*[^ ]%*[ ]%d", &groupid);
         if (0 == ret) {
             continue;
         }
-        
+
         if (0 == groupid) {
             if (0 == i) {
                 memcpy(mgt_name[i], temp_name, strlen(temp_name));
@@ -151,10 +151,10 @@ main(int argc, char **argv)
                 i++;
                 break;
             }
-            
+
         }
     }
-    
+
     if (0 == i) {
         syslog(LOG_ERR, "[%s-%d]""Fail to get MGT port name.",
             __FUNCTION__, __LINE__);
@@ -162,18 +162,18 @@ main(int argc, char **argv)
     }
     syslog(LOG_INFO, "mgt1_name = %s\n", mgt_name[0]);
     syslog(LOG_INFO, "mgt2_name = %s\n", mgt_name[1]);
-    
+
     if (iptables_init) {
         while (i) {
             i--;
             memset(line_buf, 0, sizeof(line_buf));
             sprintf(line_buf, "iptables -A INPUT -p tcp --dport 3306 -j DROP -i %s", mgt_name[i]);
             popen_cmd(line_buf);
-            
+
             memset(line_buf, 0, sizeof(line_buf));
             sprintf(line_buf, "iptables -A INPUT -p tcp --dport 22 -j DROP -i %s", mgt_name[i]);
             popen_cmd(line_buf);
-            
+
             memset(line_buf, 0, sizeof(line_buf));
             sprintf(line_buf, "iptables -A INPUT -p tcp --dport 80 -j DROP -i %s", mgt_name[i]);
             popen_cmd(line_buf);
@@ -189,12 +189,12 @@ main(int argc, char **argv)
     } else if (iptables_get_ssh) {
         char buf[128] = {0};
         memset(line_buf, 0, sizeof(line_buf));
-        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");   
+        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");
         fp_cmd = popen(line_buf, "r");
         syslog(LOG_INFO, "%s\n", line_buf);
         fgets(buf,120,fp_cmd);
         pclose(fp_cmd);
-        if (atoi(buf)) 
+        if (atoi(buf))
             ret = 1;
         else
             ret = 0;
@@ -202,7 +202,7 @@ main(int argc, char **argv)
     } else if (iptables_set_ssh_drop) {
         char buf[128] = {0};
         memset(line_buf, 0, sizeof(line_buf));
-        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");   
+        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");
         fp_cmd = popen(line_buf, "r");
         syslog(LOG_INFO, "%s\n", line_buf);
         fgets(buf,120,fp_cmd);
@@ -210,7 +210,7 @@ main(int argc, char **argv)
         if (0 == atoi(buf)) {
             while (i) {
                 i--;
-                memset(line_buf, 0, sizeof(line_buf));  
+                memset(line_buf, 0, sizeof(line_buf));
                 sprintf(line_buf, "iptables -A INPUT -p tcp --dport 22 -j DROP -i %s", mgt_name[i]);
                 popen_cmd(line_buf);
             }
@@ -218,7 +218,7 @@ main(int argc, char **argv)
     } else if (iptables_set_ssh_accept) {
         char buf[128] = {0};
         memset(line_buf, 0, sizeof(line_buf));
-        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");   
+        sprintf(line_buf, "iptables -L INPUT | grep \"dpt:ssh\" | wc -l");
         fp_cmd = popen(line_buf, "r");
         syslog(LOG_INFO, "%s\n", line_buf);
         fgets(buf,120,fp_cmd);
@@ -232,7 +232,7 @@ main(int argc, char **argv)
             }
         }
     }
-    
+
     fclose(fp);
     closelog();
     return ret;

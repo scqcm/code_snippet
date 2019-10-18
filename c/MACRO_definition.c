@@ -10,7 +10,7 @@ do {							\
 		   # truth);				\
     }							\
 } while (0)
-    
+
 
 #define vlib_validate_buffer_enqueue_x2(vm,node,next_index,to_next,n_left_to_next,bi0,bi1,next0,next1) \
 do {									\

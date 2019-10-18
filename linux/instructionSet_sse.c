@@ -1,5 +1,5 @@
 
-#include <x86intrin.h>  
+#include <x86intrin.h>
 
 int
 main(void)
