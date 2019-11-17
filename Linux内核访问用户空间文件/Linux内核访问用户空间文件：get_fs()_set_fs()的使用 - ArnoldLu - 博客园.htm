@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-cn"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="origin">
+<title>Linux内核访问用户空间文件：get_fs()/set_fs()的使用 - ArnoldLu - 博客园</title>
+<meta property="og:description" content="测试环境：Ubuntu 14.04+Kernel 4.4.0-31 关键词：KERNEL_DS、USER_DS、get_fs()、set_fs()、addr_limit、access_ok。 参考代码">
+<link type="text/css" rel="stylesheet" href="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/blog-common.css">
+<link id="MainCss" type="text/css" rel="stylesheet" href="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/bundle-AnotherEon001.css">
+<link id="mobile-style" media="only screen and (max-width: 767px)" type="text/css" rel="stylesheet" href="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/bundle-AnotherEon001-mobile.css">
+<link title="RSS" type="application/rss+xml" rel="alternate" href="https://www.cnblogs.com/arnoldlu/rss">
+<link title="RSD" type="application/rsd+xml" rel="EditURI" href="https://www.cnblogs.com/arnoldlu/rsd.xml">
+<link type="application/wlwmanifest+xml" rel="wlwmanifest" href="https://www.cnblogs.com/arnoldlu/wlwmanifest.xml">
+<script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/osd.js"></script><script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/amp4ads-host-v0.js"></script><script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/pubads_impl_rendering_201811271.js"></script><script async="" src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/analytics.js"></script><script type="text/javascript" src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/encoder.js"></script><script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/jquery-2.js"></script>
+<script type="text/javascript">var currentBlogApp = 'arnoldlu', cb_enable_mathjax=false;var isLogined=false;</script>
+<script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/blog-common.js" type="text/javascript"></script>
+<link rel="preload" href="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/integrator.js" as="script"><script type="text/javascript" src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/integrator.js"></script><script src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/pubads_impl_201811271.js" async=""></script></head>
+<body>
+<a name="top"></a>
+<!--PageBeginHtml Block Begin-->
+<p>
+<a href="http://elixir.free-electrons.com/linux/latest/source" target="_blank">LXR</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/6421317.html" target="_blank"> | KVM</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/6229978.html" target="_blank"> | PM</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/7025751.html" target="_blank"> | Time</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/7406441.html" target="_blank"> | Interrupt</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/7998225.html" target="_blank"> | Systems Performance</a>
+<a href="http://www.cnblogs.com/arnoldlu/p/7997549.html" target="_blank"> | Bootup Optimization</a>
+</p>
+<!--PageBeginHtml Block End-->
+
+<div id="wrapper">
+<div id="header">
+
+<div id="top">
+<h1><a id="Header1_HeaderTitle" class="headermaintitle" href="https://www.cnblogs.com/arnoldlu/">Arnold Lu@南京</a></h1>
+<div id="subtitle">联系方式：arnoldlu@qq.com</div>
+</div>
+<div id="sub"><div id="blog_stats">
+<div class="BlogStats">随笔 - 167, 文章 - 0, 评论 - 4, 引用 - 0</div>
+</div></div>
+
+
+
+</div>
+<div id="main_container">
+<div id="main_content">
+<div id="content">
+	
+<div id="post_detail">
+	<div class="post">
+		<h2>
+			<a id="cb_post_title_url" href="https://www.cnblogs.com/arnoldlu/p/8879800.html">Linux内核访问用户空间文件：get_fs()/set_fs()的使用</a>
+		</h2>
+		<div class="postbody">
+		<div id="cnblogs_post_body" class="blogpost-body"><p>测试环境：Ubuntu 14.04+Kernel 4.4.0-31</p>
+<p>关键词：<span style="color: #ff0000">KERNEL_DS、USER_DS、get_fs()、set_fs()、addr_limit、access_ok</span>。</p>
+<p>参考代码：<a href="https://elixir.bootlin.com/linux/v4.4/source" target="_blank">https://elixir.bootlin.com/linux/v4.4/source</a></p>
+<p>&nbsp;</p>
+<p>内核空间和用户空间交换数据的方式有很多，比如用户空间发起的系统调用、proc、虚拟文件系统等。</p>
+<p>内核空间主动发起的有get_user/put_user、信号、netlink等。</p>
+<p>这里介绍get_user/put_user的使用以及背后的原理。</p>
+<p>&nbsp;</p>
+<h1>1. 构造测试环境：Ubuntu下创建module</h1>
+<p>要让内核空间主动发起，需要创建一个module，然后插入到内核中。</p>
+<p>从内核中发起创建kernel_file，并写入内容。</p>
+<p>最后从用户空间进行验证。</p>
+<h2>1.1 测试源码</h2>
+<p>首先，编写module源码：</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>#include &lt;linux/module.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/init.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/fs.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/uaccess.h&gt;
+
+<span style="color: #0000ff">static</span> <span style="color: #0000ff">char</span> buf[] =<span style="color: #800000">"</span><span style="color: #800000">来自内核的访问\n</span><span style="color: #800000">"</span><span style="color: #000000">;
+</span><span style="color: #0000ff">static</span> <span style="color: #0000ff">char</span> buf1[<span style="color: #800080">32</span><span style="color: #000000">];
+ 
+</span><span style="color: #0000ff">int</span> __init test_init(<span style="color: #0000ff">void</span><span style="color: #000000">)
+{
+    </span><span style="color: #0000ff">struct</span> file *<span style="color: #000000">fp;
+    mm_segment_t fs;
+    loff_t pos;
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">test enter\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+    fp </span>=filp_open(<span style="color: #800000">"</span><span style="color: #800000">/home/jenkins/lubaoquan/test/kernel_file</span><span style="color: #800000">"</span>,O_RDWR | O_CREAT,<span style="color: #800080">0644</span><span style="color: #000000">);
+    </span><span style="color: #0000ff">if</span><span style="color: #000000"> (IS_ERR(fp)){
+        printk(</span><span style="color: #800000">"</span><span style="color: #800000">create file error\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+        </span><span style="color: #0000ff">return</span> -<span style="color: #800080">1</span><span style="color: #000000">;
+    }
+    fs </span>=<span style="color: #000000">get_fs();
+    set_fs(KERNEL_DS);
+    pos </span>=<span style="color: #800080">0</span><span style="color: #000000">;
+    vfs_write(fp,buf, </span><span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);
+    pos </span>=<span style="color: #800080">0</span><span style="color: #000000">;
+    vfs_read(fp,buf1, </span><span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">Write contet=%s\n</span><span style="color: #800000">"</span><span style="color: #000000">,buf1);
+    filp_close(fp,NULL);
+    set_fs(fs);
+    </span><span style="color: #0000ff">return</span> <span style="color: #800080">0</span><span style="color: #000000">;
+}
+</span><span style="color: #0000ff">void</span> __exit test_exit(<span style="color: #0000ff">void</span><span style="color: #000000">)
+{
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">test exit\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+}
+ 
+module_init(test_init);
+module_exit(test_exit);
+ 
+MODULE_LICENSE(</span><span style="color: #800000">"</span><span style="color: #800000">GPL</span><span style="color: #800000">"</span>);</pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<p>&nbsp;编写Makefile文件：</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>obj-m :=<span style="color: #000000">read_userspace.o                        #要生成的模块名     
+read_userspace</span>-objs:=<span style="color: #000000"> read_userspace_file.o     #生成这个模块名所需要的目标文件
+
+KDIR :</span>= /lib/modules/`uname -r`/<span style="color: #000000">build
+PWD :</span>=<span style="color: #000000"> $(shell pwd)
+
+</span><span style="color: #0000ff">default</span><span style="color: #000000">:
+    make </span>-C $(KDIR) M=<span style="color: #000000">$(PWD) modules
+
+clean:
+    rm </span>-rf *.o *.cmd *.ko *.mod.c .tmp_versions Module.symvers modules.order</pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<h2>1.2 编译</h2>
+<p>执行make命令，就可以得到read_userspace.ko文件。</p>
+<h2>1.3 测试</h2>
+<blockquote>
+<p>sudo insmod read_userspace.ko-----------------插入模组</p>
+<p>sudo lsmod | grep read_userspace--------------验证是否插入成功</p>
+<p>sudo rmmod read_userspace----------------------移除模组</p>
+</blockquote>
+<p>测试结果如下，可以看出kernel_file是由root用户创建的。</p>
+<p><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/1083701-20180424191231017-415471953.png" alt=""></p>
+<p>可以看出内容符合预期。</p>
+<p>&nbsp;</p>
+<h2>3. 代码分析</h2>
+<p>&nbsp;</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>    fp =filp_open(<span style="color: #800000">"</span><span style="color: #800000">/home/jenkins/lubaoquan/test/kernel_file</span><span style="color: #800000">"</span>,O_RDWR | O_CREAT,<span style="color: #800080">0644</span><span style="color: #000000">);---------------------创建用户空间文件，获取文件句柄。
+    </span><span style="color: #0000ff">if</span><span style="color: #000000"> (IS_ERR(fp)){
+        printk(</span><span style="color: #800000">"</span><span style="color: #800000">create file error\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+        </span><span style="color: #0000ff">return</span> -<span style="color: #800080">1</span><span style="color: #000000">;
+    }
+    fs </span>=<span style="color: #000000">get_fs();----------------------------------------------------------------------------------------获取当前线程的thread_info-&gt;addr_limit。
+    set_fs(KERNEL_DS);-----------------------------------------------------------------------------------将能访问的空间thread_info-&gt;addr_limit扩大到KERNEL_DS。
+    pos </span>=<span style="color: #800080">0</span><span style="color: #000000">;
+    vfs_write(fp,buf, </span><span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);----------------------------------------------------------------调用vfs_write写内容
+    pos </span>=<span style="color: #800080">0</span><span style="color: #000000">;
+    vfs_read(fp,buf1, </span><span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);----------------------------------------------------------------调用vfs_read读取内容
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">Write contet=%s\n</span><span style="color: #800000">"</span><span style="color: #000000">,buf1);
+    filp_close(fp,NULL);---------------------------------------------------------------------------------关闭文件
+    set_fs(fs);------------------------------------------------------------------------------------------将thread_info-&gt;addr_limit切换回原来值</span></pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<h1>4. 原理</h1>
+<p>&nbsp;</p>
+<h2>4.1 set_fs和get_fs</h2>
+<p><span style="color: #ff0000"><span style="color: #000000">有下面代码可知KERNEL_DS范围很大，到</span><span style="color: #000000">0xffffffffffffffff</span><span style="color: #000000">。</span></span></p>
+<p>而USER_DS范围较小，到0x7ffffffff000。</p>
+<p>由Linux内存分布图可知，KERNEL_DS意味着可以访问整个内存所有空间，USER_DS只能访问用户空间内存。</p>
+<p>通过set_fs可以改变thread_info-&gt;addr_limit的大小。</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre><span style="color: #008000">/*</span><span style="color: #008000">
+ * For historical reasons, the following macros are grossly misnamed:
+ </span><span style="color: #008000">*/</span>
+<span style="color: #0000ff">#define</span> KERNEL_DS    ((mm_segment_t) { ~0UL })        /* cf. access_ok() */
+<span style="color: #0000ff">#define</span> USER_DS        ((mm_segment_t) { TASK_SIZE-1 })    /* cf. access_ok() */
+
+<span style="color: #0000ff">#define</span> VERIFY_READ    0
+<span style="color: #0000ff">#define</span> VERIFY_WRITE    1
+
+<span style="color: #0000ff">#define</span> get_ds()  (KERNEL_DS)
+<span style="color: #0000ff">#define</span> get_fs()  (current_thread_info()-&gt;addr_limit)
+<span style="color: #0000ff">#define</span> set_fs(x) (current_thread_info()-&gt;addr_limit = (x))
+
+
+<span style="color: #0000ff">#define</span> TASK_SIZE           DEFAULT_TASK_SIZE<span style="color: #0000ff">&nbsp;</span></pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<h2>4.2 vfs_write和vfs_read对addr_limit的检查</h2>
+<p>将代码修改一下，不进行addr_limit扩大，看看结果如何。</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>#include &lt;linux/module.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/init.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/fs.h&gt;<span style="color: #000000">
+#include </span>&lt;linux/uaccess.h&gt;
+
+<span style="color: #0000ff">static</span> <span style="color: #0000ff">char</span> buf[] =<span style="color: #800000">"</span><span style="color: #800000">来自内核的访问\n</span><span style="color: #800000">"</span><span style="color: #000000">;
+</span><span style="color: #0000ff">static</span> <span style="color: #0000ff">char</span> buf1[<span style="color: #800080">32</span><span style="color: #000000">];
+ 
+</span><span style="color: #0000ff">int</span> __init test_init(<span style="color: #0000ff">void</span><span style="color: #000000">)
+{
+    </span><span style="color: #0000ff">struct</span> file *<span style="color: #000000">fp;
+    mm_segment_t fs;
+    loff_t pos;
+    </span><span style="color: #0000ff">int</span><span style="color: #000000"> ret;
+    
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">KERNEL_DS=0x%llx USER_DS=0x%llx get_fs()=0x%llx\n</span><span style="color: #800000">"</span><span style="color: #000000">, KERNEL_DS, USER_DS, get_fs());
+    fp </span>=filp_open(<span style="color: #800000">"</span><span style="color: #800000">/home/jenkins/lubaoquan/test/kernel_file</span><span style="color: #800000">"</span>,O_RDWR | O_CREAT,<span style="color: #800080">0644</span><span style="color: #000000">);
+    </span><span style="color: #0000ff">if</span><span style="color: #000000"> (IS_ERR(fp)){
+        printk(</span><span style="color: #800000">"</span><span style="color: #800000">create file error\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+        </span><span style="color: #0000ff">return</span> -<span style="color: #800080">1</span><span style="color: #000000">;
+    }
+    fs </span>=<span style="color: #000000">get_fs();
+    </span><strong><span style="color: #ff0000">//set_fs(KERNEL_DS);
+</span></strong>    pos =<span style="color: #800080">0</span><span style="color: #000000">;
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">fp=%p, buf=%p get_fs()=0x%llx\n</span><span style="color: #800000">"</span><span style="color: #000000">, fp, buf, get_fs());
+    ret </span>= vfs_write(fp,buf, <span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">ret=%d\n</span><span style="color: #800000">"</span><span style="color: #000000">, ret);
+    pos </span>=<span style="color: #800080">0</span><span style="color: #000000">;
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">fp=%p, buf1=%p\n</span><span style="color: #800000">"</span><span style="color: #000000">, fp, buf1);
+    ret </span>= vfs_read(fp,buf1, <span style="color: #0000ff">sizeof</span>(buf), &amp;<span style="color: #000000">pos);
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">ret=%d Write contet=%s\n</span><span style="color: #800000">"</span><span style="color: #000000">, ret, buf1);
+    filp_close(fp,NULL);
+    </span><strong><span style="color: #ff0000">//set_fs(fs);
+</span></strong>    <span style="color: #0000ff">return</span> <span style="color: #800080">0</span><span style="color: #000000">;
+}
+</span><span style="color: #0000ff">void</span> __exit test_exit(<span style="color: #0000ff">void</span><span style="color: #000000">)
+{
+    printk(</span><span style="color: #800000">"</span><span style="color: #800000">test exit\n</span><span style="color: #800000">"</span><span style="color: #000000">);
+}
+ 
+module_init(test_init);
+module_exit(test_exit);
+ 
+MODULE_LICENSE(</span><span style="color: #800000">"</span><span style="color: #800000">GPL</span><span style="color: #800000">"</span>);</pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>执行结果如下，可以看出fp、buf、buf1都位于内核空间。而当前空间的get_fs()为0x7ffffffff000，这些地址都超出当前空间。</p>
+<p>所以vfs_read和vfs_write返回值都是-14，即“Bad address”。</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>[<span style="color: #800080">49001.240705</span>] KERNEL_DS=<span style="color: #800080">0xffffffffffffffff</span> USER_DS=<span style="color: #800080">0x7ffffffff000</span> get_fs()=<span style="color: #800080">0x7ffffffff000</span><span style="color: #000000">
+[</span><span style="color: #800080">49001.240713</span>] fp=ffff8800cae06900, buf=ffffffffc0305000 get_fs()=<strong><span style="color: #ff0000">0x7ffffffff000</span></strong><span style="color: #000000">
+[</span><span style="color: #800080">49001.240714</span>] ret=<strong><span style="color: #ff0000">-14</span></strong><span style="color: #000000">
+[</span><span style="color: #800080">49001.240715</span>] fp=ffff8800cae06900, buf1=<span style="color: #000000">ffffffffc03053c0
+[</span><span style="color: #800080">49001.240716</span>] ret=<span style="color: #ff0000">-14</span> Write contet=<span style="color: #000000">
+[</span><span style="color: #800080">49013.464812</span>] test exit</pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p><span style="color: #ff0000"><span style="color: #000000">简单看一下vfs_write和vfs_read，两者都调用access_ok对地址合法性进行检查，严禁addr大于当前get_fs()。</span></span></p>
+<p><span style="color: #ff0000"><span style="color: #000000">此处buf和buf1都不满足条件，所以返回-EFAULT。</span></span></p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre><span style="color: #0000ff">#define</span> __access_ok(addr, size, segment)                        \<span style="color: #000000">
+({                                            \
+    __chk_user_ptr(addr);                                \
+    (likely(<span style="color: #ff0000">(unsigned </span></span><span style="color: #ff0000">long) (addr) &lt;=</span><span style="color: #000000"><span style="color: #ff0000"> (segment).seg</span>)                \
+     </span>&amp;&amp; ((segment).seg ==<span style="color: #000000"> KERNEL_DS.seg                        \
+         </span>|| likely(REGION_OFFSET((unsigned <span style="color: #0000ff">long</span>) (addr)) &lt;<span style="color: #000000"> RGN_MAP_LIMIT)));    \
+})
+</span><span style="color: #0000ff">#define</span> access_ok(type, addr, size)    __access_ok((addr), (size), get_fs())<span style="color: #000000">
+
+
+ssize_t vfs_write(</span><span style="color: #0000ff">struct</span> file *file, <span style="color: #0000ff">const</span> <span style="color: #0000ff">char</span> __user *buf, size_t count, loff_t *<span style="color: #000000">pos)
+{
+</span><span style="color: #000000">...
+    </span><span style="color: #0000ff">if</span> (unlikely(!<span style="color: #000000">access_ok(VERIFY_READ, buf, count)))
+        </span><span style="color: #0000ff">return</span> -<span style="color: #000000">EFAULT;
+</span><span style="color: #000000">...
+}
+
+ssize_t vfs_read(</span><span style="color: #0000ff">struct</span> file *file, <span style="color: #0000ff">char</span> __user *buf, size_t count, loff_t *<span style="color: #000000">pos)
+{
+</span><span style="color: #000000">...
+    </span><span style="color: #0000ff">if</span> (unlikely(!<span style="color: #000000">access_ok(VERIFY_WRITE, buf, count)))
+        </span><span style="color: #0000ff">return</span> -<span style="color: #000000">EFAULT;
+</span><span style="color: #000000">...
+}</span></pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;</p>
+<p>将测试代码红色部分打开，扩大addr_limit空间。</p>
+<p>可以看出当前thread_info-&gt;addr_limit变成了0xffffffffffffffff。</p>
+<p>所以vfs_write和vfs_read的access_ok检查得以通过，程序得到正确执行。</p>
+<div class="cnblogs_code"><div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div>
+<pre>[<span style="color: #800080">48937.547119</span>] KERNEL_DS=<span style="color: #800080">0xffffffffffffffff</span> USER_DS=<span style="color: #800080">0x7ffffffff000</span> get_fs()=<span style="color: #800080">0x7ffffffff000</span><span style="color: #000000">
+[</span><span style="color: #800080">48937.547138</span>] fp=ffff8800c8300c00, buf=ffffffffc02f3000 get_fs()=<strong><span style="color: #ff0000">0xffffffffffffffff</span></strong><span style="color: #000000">
+[</span><span style="color: #800080">48937.547155</span>] ret=<strong><span style="color: #ff0000">23</span></strong><span style="color: #000000">
+[</span><span style="color: #800080">48937.547158</span>] fp=ffff8800c8300c00, buf1=<span style="color: #000000">ffffffffc02f33c0
+[</span><span style="color: #800080">48937.547164</span>] ret=<span style="color: #ff0000"><strong>23</strong> </span>Write contet=<span style="color: #000000"><strong><span style="color: #ff0000">\xffffffe6\xffffff9d\xffffffa5\xffffff9d\xffffffa5\xffffffe8\xffffff87\xffffffaa\xffffff87\xffffffaa\xffffffe5\xffffff86\xffffff85\xffffff86\xffffff85\xffffffe6\xffffffa0\xffffffb8\xffffffa0\xffffffb8\xffffffe7\xffffff9a\xffffff84\xffffff9a\xffffff84\xffffffe8\xffffffae\xffffffbf\xffffffae\xffffffbf\xffffffe9\xffffff97\xffffffae\xffffff97\xffffffae</span></strong>
+[</span><span style="color: #800080">48937.547164</span><span style="color: #000000">] 
+[</span><span style="color: #800080">48940.600703</span>] test exit</pre>
+<div class="cnblogs_code_toolbar"><span class="cnblogs_code_copy"><a href="javascript:void(0);" onclick="copyCnblogsCode(this)" title="复制代码"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/copycode.gif" alt="复制代码"></a></span></div></div>
+<p>&nbsp;&nbsp;</p>
+<h1>5. 小结</h1>
+<p>只有使用上面的方法，才能在内核中使用open,write等的系统调用。</p>
+<p>其实这样做的主要原因是open,write的参数在用户空间，在这些系统调用的实现里需要对参数进行检查，就是检查它的参数指针地址是不是用户空间的。</p>
+<p>系统调用本来是提供给用户空间的程序访问的，所以，对传递给它的参数（比如上面的buf、buf1），它默认会认为来自用户空间。</p>
+<p>在vfs_write()函数中，为了保护内核空间，一般会用get_fs()得到的值来和USER_DS进行比较，从而防止用户空间程序“蓄意”破坏内核空间。</p>
+<p>为了解决这个问题， set_fs(KERNEL_DS)将其能访问的空间限制扩大到KERNEL_DS，这样就可以在内核顺利使用系统调用了！</p>
+<p>&nbsp;</p>
+<p>内核使用系统调用参数肯定是内核空间，为了不让这些系统调用检查参数所以必须设置&nbsp;&nbsp;set_fs(KERNEL_DS)才能使用该系统调用。</p>
+<p>vfs_write的流程可调用access_ok，而access_ok会判断访问的buf是否在0~addr_limit之间，如何是就ok；否则-EFAULT，这显然是为用户准备的检查。</p>
+<p>addr_limit一般设为USER_DS，在内核空间，buf肯定&gt;USER_DS，必须修改addr_limit，这就是set_fs的由来。</p></div><div id="MySignature" style="display: block;">联系方式:arnoldlu@qq.com</div>
+<div class="clear"></div>
+<div id="blog_post_info_block">
+<div id="BlogPostCategory">分类: <a href="https://www.cnblogs.com/arnoldlu/category/926714.html" target="_blank">Linux相关学习总结</a></div>
+<div id="EntryTag"></div>
+<div id="blog_post_info"><div id="green_channel">
+        <a href="javascript:void(0);" id="green_channel_digg" onclick="DiggIt(8879800,cb_blogId,1);green_channel_success(this,'谢谢推荐！');">好文要顶</a>
+            <a id="green_channel_follow" onclick="follow('421fcf3e-89c6-e611-845c-ac853d9f53ac');" href="javascript:void(0);">关注我</a>
+    <a id="green_channel_favorite" onclick="AddToWz(cb_entryId);return false;" href="javascript:void(0);">收藏该文</a>
+    <a id="green_channel_weibo" href="javascript:void(0);" title="分享至新浪微博" onclick="ShareToTsina()"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/icon_weibo_24.png" alt=""></a>
+    <a id="green_channel_wechat" href="javascript:void(0);" title="分享至微信" onclick="shareOnWechat()"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/wechat.png" alt=""></a>
+</div>
+<div id="author_profile">
+    <div id="author_profile_info" class="author_profile_info">
+            <a href="http://home.cnblogs.com/u/arnoldlu/" target="_blank"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/sample_face.gif" class="author_avatar" alt=""></a>
+        <div id="author_profile_detail" class="author_profile_info">
+            <a href="http://home.cnblogs.com/u/arnoldlu/">ArnoldLu</a><br>
+            <a href="http://home.cnblogs.com/u/arnoldlu/followees">关注 - 0</a><br>
+            <a href="http://home.cnblogs.com/u/arnoldlu/followers">粉丝 - 27</a>
+        </div>
+    </div>
+    <div class="clear"></div>
+    <div id="author_profile_honor"></div>
+    <div id="author_profile_follow">
+                <a href="javascript:void(0);" onclick="follow('421fcf3e-89c6-e611-845c-ac853d9f53ac');return false;">+加关注</a>
+    </div>
+</div>
+<div id="div_digg">
+    <div class="diggit" onclick="votePost(8879800,'Digg')">
+        <span class="diggnum" id="digg_count">0</span>
+    </div>
+    <div class="buryit" onclick="votePost(8879800,'Bury')">
+        <span class="burynum" id="bury_count">0</span>
+    </div>
+    <div class="clear"></div>
+    <div class="diggword" id="digg_tips">
+    </div>
+</div>
+<script type="text/javascript">
+    currentDiggType = 0;
+</script></div>
+<div class="clear"></div>
+<div id="post_next_prev"><a href="https://www.cnblogs.com/arnoldlu/p/8466928.html" class="p_n_p_prefix">« </a> 上一篇：<a href="https://www.cnblogs.com/arnoldlu/p/8466928.html" title="发布于2018-04-17 22:34">Linux进程管理 (1)进程的诞生</a><br><a href="https://www.cnblogs.com/arnoldlu/p/8659972.html" class="p_n_p_prefix">» </a> 下一篇：<a href="https://www.cnblogs.com/arnoldlu/p/8659972.html" title="发布于2018-05-06 22:00">Linux中断管理</a><br></div>
+</div>
+
+
+		</div>
+		<p class="postfoot">
+			posted on <span id="post-date">2018-04-25 09:14</span> <a href="https://www.cnblogs.com/arnoldlu/">ArnoldLu</a> 阅读(<span id="post_view_count">1145</span>) 评论(<span id="post_comment_count">0</span>)  <a href="https://i.cnblogs.com/EditPosts.aspx?postid=8879800" rel="nofollow">编辑</a> <a href="#" onclick="AddToWz(8879800);return false;">收藏</a>
+		</p>
+	</div>
+	<script type="text/javascript">var allowComments=true,cb_blogId=323754,cb_entryId=8879800,cb_blogApp=currentBlogApp,cb_blogUserGuid='421fcf3e-89c6-e611-845c-ac853d9f53ac',cb_entryCreatedDate='2018/4/25 9:14:00';loadViewCount(cb_entryId);var cb_postType=1;</script>
+	
+	</div><a name="!comments"></a><div id="blog-comments-placeholder"></div><script type="text/javascript">var commentManager = new blogCommentManager();commentManager.renderComments(0);</script>
+<div id="comment_form" class="commentform">
+<a name="commentform"></a>
+<div id="divCommentShow"></div>
+<div id="comment_nav"><span id="span_refresh_tips"></span><a href="javascript:void(0);" onclick="return RefreshCommentList();" id="lnk_RefreshComments" runat="server" clientidmode="Static">刷新评论</a><a href="#" onclick="return RefreshPage();">刷新页面</a><a href="#top">返回顶部</a></div>
+<div id="comment_form_container"><div class="login_tips">注册用户登录后才能发表评论，请 <a rel="nofollow" href="javascript:void(0);" class="underline" onclick="return login('commentform');">登录</a> 或 <a rel="nofollow" href="javascript:void(0);" class="underline" onclick="return register();">注册</a>，<a href="http://www.cnblogs.com/">访问</a>网站首页。</div></div>
+<div class="ad_text_commentbox" id="ad_text_under_commentbox"></div>
+<div id="ad_t2"><a href="http://www.ucancode.com/index.htm" target="_blank">【推荐】超50万VC++源码: 大型组态工控、电力仿真CAD与GIS源码库！</a><br><a href="http://clickc.admaster.com.cn/c/a113612,b3081535,c1705,i0,m101,8a1,8b3,h" target="_blank" onclick="ga('send', 'event', 'Link', 'click', 'T2-EH')">【活动】华为云12.12会员节全场1折起 满额送Mate20</a><br><a href="http://clickc.admaster.com.cn/c/a116493,b2949399,c1705,i0,m101,8a1,8b3,h" target="_blank" onclick="ga('send', 'event', 'Link', 'click', 'T2-会员节')">【活动】华为云会员节云服务特惠1折起</a><br><a href="https://cloud.tencent.com/developer/conf/2018-beijing?fromSource=gwzcw.1768694.1768694.1768694" target="_blank" onclick="ga('send', 'event', 'Link', 'click', 'T2-腾讯云')">【活动】腾讯云+社区开发者大会12月15日首都北京盛大起航！</a><br></div>
+<div id="opt_under_post"></div>
+<div id="cnblogs_c1" class="c_ad_block"><a href="https://cloud.tencent.com/act/special/amd?fromSource=gwzcw.1351353.1351353.1351353" target="_blank"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/24442-20181129113406214-695115565.jpg" alt="腾讯云1129" onclick="ga('send', 'event', 'Link', 'click', 'C1');" width="300" height="250"></a></div>
+<div id="under_post_news"><div class="itnews c_ad_block"><b>相关博文：</b><br>·  <a href="https://www.cnblogs.com/bittorrent/p/3264211.html" target="_blank" onclick="clickRecomItmem(3264211,'/1WgcMIAlpmm79VmZDqdNccRqSFBd+dvir7QzE09XH+ieZPC0d750jBq4Ug6QJGNiQZMI1Cz3Kb3txy6WbbQzJEyvHrxdAZA3qUWfu5Gc0PBjU7rZuyRlt0cg2qwS2xmSaniJO2l6raIUJCR')">如何在LinuxKernel中操作file(set_fs與get_fs)</a><br>·  <a href="https://www.cnblogs.com/limt/p/4216566.html" target="_blank" onclick="clickRecomItmem(4216566,'eAQS0U/FYx0b+w1Mduf9fBOpgx0WeK7Z4v06EaxlJIxGWIame+AVI4Xp+qCV/WpQkwmkt+SVWmuMmNs6iMyEb/+cW+Qcw1GQ3zW5RR8fy3SBQHDE/90uqEjfMPPMDHRP300RVbcrDQOLDhXV')">LINUX内核参数FS与VM相关</a><br>·  <a href="https://www.cnblogs.com/logo-fox/p/5906010.html" target="_blank" onclick="clickRecomItmem(5906010,'a/FedGphfCZixe8th2DIcM/SiVnjJ/glldRMgSStQxNXaGm/GulCqR7r880l0/+i243KxmXXjBxG6QSUOUGyR8HP7n6HBg7qcQFwRMBJsX5wFIE+4nzhy7bZ8RAiAzddrHkItwiHw6yKf8Y7')">FS 日志空间限定</a><br>·  <a href="https://www.cnblogs.com/guangzhou11/p/7700577.html" target="_blank" onclick="clickRecomItmem(7700577,'IAyju9KihWItDCkQjxAWALX4qcZZXhHP+nFuCUvwk3Pc7RDMSZW5Lvebai0vRsnsHiEhTT4vWCFGRIeI1G6PlOc8Rqh1jemxjixSBgNxAsslP87EhA0+JtynQ2SCPpqlC+LUdbrJ0raoiDkc')">nodejs模块——fs模块 使用fs.read读文件</a><br>·  <a href="https://www.cnblogs.com/x-hui/p/6497890.html" target="_blank" onclick="clickRecomItmem(6497890,'hm6Ugwag0Agc6cvNks27Re8IPfZCeRKzqAGNVPn0GaLwTXIZi53eMFoskKaI6wyWjHcdLw8kToVpyuwfYk5vI4WWFFlKOuoKgDXladKqk773ujChH5HnUdaoqEg48cLk+e+fpwvz2JRNCxm1')">fs 文件模块</a><br></div></div>
+<script async="async" src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/gpt.js"></script>
+<script>
+  var googletag = googletag || {};
+  googletag.cmd = googletag.cmd || [];
+</script>
+
+<script>
+  googletag.cmd.push(function() {
+    googletag.defineSlot('/1090369/C2', [468, 60], 'div-gpt-ad-1539008685004-0').addService(googletag.pubads());
+    googletag.pubads().enableSingleRequest();
+    googletag.enableServices();
+  });
+</script>
+<div id="cnblogs_c2" class="c_ad_block">
+    <div id="div-gpt-ad-1539008685004-0" style="height:60px; width:468px;" data-google-query-id="CNOF_qbolt8CFRd9YgodgxEIgw">
+    <script>
+    if (new Date() >= new Date(2018, 9, 13)) {
+        googletag.cmd.push(function() { googletag.display('div-gpt-ad-1539008685004-0'); });
+    }
+    </script>
+    <div id="google_ads_iframe_/1090369/C2_0__container__" style="border: 0pt none;"><iframe id="google_ads_iframe_/1090369/C2_0" title="3rd party ad content" name="google_ads_iframe_/1090369/C2_0" scrolling="no" marginwidth="0" marginheight="0" style="border: 0px none; vertical-align: bottom;" srcdoc="" data-google-container-id="1" data-load-complete="true" width="468" height="60" frameborder="0"></iframe></div></div>
+</div>
+<div id="under_post_kb"><div class="itnews c_ad_block"><b>最新新闻</b>：<br> ·  <a href="https://news.cnblogs.com/n/614556/" target="_blank">亚马逊调查数据泄露及受贿现象 已开除多名泄密员工</a><br> ·  <a href="https://news.cnblogs.com/n/614569/" target="_blank">无人驾驶卡车也要来了吗？业内：技术完备两年可实现</a><br> ·  <a href="https://news.cnblogs.com/n/614568/" target="_blank">当太空遇上直播 斗鱼直播冠名卫星“斗鱼666号”</a><br> ·  <a href="https://news.cnblogs.com/n/614573/" target="_blank">Uber发生全球性宕机 官方展开紧急调查</a><br> ·  <a href="https://news.cnblogs.com/n/614572/" target="_blank">有一次打流感疫苗的机会摆在你面前，打还是不打？</a><br>» <a href="http://news.cnblogs.com/" title="IT新闻" target="_blank">更多新闻...</a></div></div>
+<div id="HistoryToday" class="c_ad_block"></div>
+<script type="text/javascript">
+    fixPostBody();
+    setTimeout(function () { incrementViewCount(cb_entryId); }, 50);
+    deliverAdT2();
+    deliverAdC1();
+    deliverAdC2();    
+    loadNewsAndKb();
+    loadBlogSignature();
+    LoadPostInfoBlock(cb_blogId, cb_entryId, cb_blogApp, cb_blogUserGuid);
+    GetPrevNextPost(cb_entryId, cb_blogId, cb_entryCreatedDate, cb_postType);
+    loadOptUnderPost();
+    GetHistoryToday(cb_blogId, cb_blogApp, cb_entryCreatedDate);   
+</script>
+</div>
+
+
+</div>
+</div>
+<div id="leftmenu">
+
+
+<h3>导航</h3>
+<ul>
+<li>
+<a id="blog_nav_sitehome" href="https://www.cnblogs.com/">博客园</a></li>
+<li>
+<a id="blog_nav_myhome" class="two_words" href="https://www.cnblogs.com/arnoldlu/">首页</a></li>
+<li>
+<a id="blog_nav_newpost" rel="nofollow" href="https://i.cnblogs.com/EditPosts.aspx?opt=1">新随笔</a></li>
+<li>
+<a id="blog_nav_contact" accesskey="9" class="two_words" rel="nofollow" href="https://msg.cnblogs.com/send/ArnoldLu">联系</a></li>
+<li>
+<a id="blog_nav_rss" class="two_words" href="https://www.cnblogs.com/arnoldlu/rss">订阅</a>
+<a id="blog_nav_rss_image" href="https://www.cnblogs.com/arnoldlu/rss"><img src="Linux%E5%86%85%E6%A0%B8%E8%AE%BF%E9%97%AE%E7%94%A8%E6%88%B7%E7%A9%BA%E9%97%B4%E6%96%87%E4%BB%B6%EF%BC%9Aget_fs()_set_fs()%E7%9A%84%E4%BD%BF%E7%94%A8%20-%20ArnoldLu%20-%20%E5%8D%9A%E5%AE%A2%E5%9B%AD_files/xml.gif" alt="订阅"></a>
+</li>
+<li>
+<a id="blog_nav_admin" class="two_words" rel="nofollow" href="https://i.cnblogs.com/">管理</a></li>
+</ul>
+
+<div id="blog-calendar" style=""><table id="blogCalendar" class="Cal" title="Calendar" cellspacing="0" cellpadding="0">
+	<tbody><tr><td colspan="7"><table class="CalTitle" cellspacing="0">
+		<tbody><tr><td class="CalNextPrev"><a href="javascript:void(0);" onclick="loadBlogCalendar('2018/11/01');return false;">&lt;</a></td><td align="center">2018年12月</td><td class="CalNextPrev" align="right"><a href="javascript:void(0);" onclick="loadBlogCalendar('2019/01/01');return false;">&gt;</a></td></tr>
+	</tbody></table></td></tr><tr><th class="CalDayHeader" abbr="日" scope="col" align="center">日</th><th class="CalDayHeader" abbr="一" scope="col" align="center">一</th><th class="CalDayHeader" abbr="二" scope="col" align="center">二</th><th class="CalDayHeader" abbr="三" scope="col" align="center">三</th><th class="CalDayHeader" abbr="四" scope="col" align="center">四</th><th class="CalDayHeader" abbr="五" scope="col" align="center">五</th><th class="CalDayHeader" abbr="六" scope="col" align="center">六</th></tr><tr><td class="CalOtherMonthDay" align="center">25</td><td class="CalOtherMonthDay" align="center">26</td><td class="CalOtherMonthDay" align="center">27</td><td class="CalOtherMonthDay" align="center">28</td><td class="CalOtherMonthDay" align="center">29</td><td class="CalOtherMonthDay" align="center">30</td><td class="CalWeekendDay" align="center">1</td></tr><tr><td class="CalWeekendDay" align="center">2</td><td align="center">3</td><td align="center"><a href="https://www.cnblogs.com/arnoldlu/archive/2018/12/04.html"><u>4</u></a></td><td align="center">5</td><td align="center">6</td><td align="center">7</td><td class="CalWeekendDay" align="center">8</td></tr><tr><td class="CalWeekendDay" align="center">9</td><td align="center">10</td><td class="CalTodayDay" align="center">11</td><td align="center">12</td><td align="center">13</td><td align="center">14</td><td class="CalWeekendDay" align="center">15</td></tr><tr><td class="CalWeekendDay" align="center">16</td><td align="center">17</td><td align="center">18</td><td align="center">19</td><td align="center">20</td><td align="center">21</td><td class="CalWeekendDay" align="center">22</td></tr><tr><td class="CalWeekendDay" align="center">23</td><td align="center">24</td><td align="center">25</td><td align="center">26</td><td align="center">27</td><td align="center">28</td><td class="CalWeekendDay" align="center">29</td></tr><tr><td class="CalWeekendDay" align="center">30</td><td align="center">31</td><td class="CalOtherMonthDay" align="center">1</td><td class="CalOtherMonthDay" align="center">2</td><td class="CalOtherMonthDay" align="center">3</td><td class="CalOtherMonthDay" align="center">4</td><td class="CalOtherMonthDay" align="center">5</td></tr>
+</tbody></table></div><script type="text/javascript">loadBlogDefaultCalendar();</script>
+<meta name="vs_showGrid" content="False">
+
+<h3>公告</h3>
+<div id="blog-news"><div id="profile_block">昵称：<a href="https://home.cnblogs.com/u/arnoldlu/">ArnoldLu</a><br>园龄：<a href="https://home.cnblogs.com/u/arnoldlu/" title="入园时间：2016-12-20">1年11个月</a><br>粉丝：<a href="https://home.cnblogs.com/u/arnoldlu/followers/">27</a><br>关注：<a href="https://home.cnblogs.com/u/arnoldlu/followees/">0</a><div id="p_b_follow"><a href="javascript:void(0);" onclick="follow('421fcf3e-89c6-e611-845c-ac853d9f53ac')">+加关注</a></div><script>getFollowStatus('421fcf3e-89c6-e611-845c-ac853d9f53ac')</script></div></div><script type="text/javascript">loadBlogNews();</script>
+
+<div id="blog-sidecolumn"><div id="sidebar_search" class="sidebar-block">
+<div id="sidebar_search" class="mySearch">
+<h3 class="catListTitle">搜索</h3>
+<div id="sidebar_search_box">
+<div id="widget_my_zzk" class="div_my_zzk"><input type="text" id="q" onkeydown="return zzk_go_enter(event);" class="input_my_zzk">&nbsp;<input onclick="zzk_go()" type="button" value="找找看" id="btnZzk" class="btn_my_zzk"></div>
+
+</div>
+</div>
+
+</div><div id="sidebar_shortcut" class="sidebar-block">
+<h3 class="catListTitle">常用链接</h3>
+<ul>
+<li><a href="https://www.cnblogs.com/arnoldlu/p/" title="我的博客的随笔列表">我的随笔</a></li><li><a href="https://www.cnblogs.com/arnoldlu/MyComments.html" title="我发表过的评论列表">我的评论</a></li><li><a href="https://www.cnblogs.com/arnoldlu/OtherPosts.html" title="我评论过的随笔列表">我的参与</a></li><li><a href="https://www.cnblogs.com/arnoldlu/RecentComments.html" title="我的博客的评论列表">最新评论</a></li><li><a href="https://www.cnblogs.com/arnoldlu/tag/" title="我的博客的标签列表">我的标签</a></li>
+</ul>
+<div id="itemListLin_con" style="display:none;">
+
+</div></div><div id="sidebar_recentposts" class="sidebar-block">
+<h3 class="catListTitle">最新随笔</h3>
+<div class="RecentComment" id="RecentPosts">
+<ul style="word-break:break-all">
+<li><a href="https://www.cnblogs.com/arnoldlu/p/10040802.html">1. ksar、sar及相关内核知识点解析</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/10028032.html">2. Linux内存管理 (26)内存相关工具</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8568330.html">3. Linux内存管理 (25)内存sysfs节点解读</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9718590.html">4. GIT归纳整理</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/10012250.html">5. AT24 I2C EEPROM解析及测试</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9187775.html">6. Linux启动时间优化-内核和用户空间启动优化实践</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9752061.html">7. Linux kprobe调试技术使用</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9553995.html">8. buildroot使用介绍</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9689585.html">9. 通过buildroot+qemu搭建ARM-Linux虚拟开发环境</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9633254.html">10. 调试器GDB的基本使用方法</a></li>
+</ul>
+</div>
+</div><div id="sidebar_toptags" class="sidebar-block"></div><div id="sidebar_categories">
+		<h3>随笔分类<span style="font-size:11px;font-weight:normal">(152)</span></h3>
+		
+				<ul>
+			
+				<li><a id="CatList_LinkList_0_Link_0" href="https://www.cnblogs.com/arnoldlu/category/926715.html">Android相关学习总结(3)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_1" href="https://www.cnblogs.com/arnoldlu/category/1329328.html">Linux Debug(7)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_2" href="https://www.cnblogs.com/arnoldlu/category/1336811.html">Linux v4l2</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_3" href="https://www.cnblogs.com/arnoldlu/category/1243302.html">Linux并发与同步专题(5)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_4" href="https://www.cnblogs.com/arnoldlu/category/1117994.html">Linux电源管理(12)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_5" href="https://www.cnblogs.com/arnoldlu/category/1167585.html">Linux进程管理(6)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_6" href="https://www.cnblogs.com/arnoldlu/category/1132616.html">Linux内存管理(28)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_7" href="https://www.cnblogs.com/arnoldlu/category/1117986.html">Linux时间子系统(28)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_8" href="https://www.cnblogs.com/arnoldlu/category/926714.html">Linux相关学习总结(19)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_9" href="https://www.cnblogs.com/arnoldlu/category/1118000.html">Linux虚拟化KVM(7)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_10" href="https://www.cnblogs.com/arnoldlu/category/1117988.html">Linux中断子系统(14)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_11" href="https://www.cnblogs.com/arnoldlu/category/1130620.html">Python(3)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_12" href="https://www.cnblogs.com/arnoldlu/category/1117974.html">Zephyr(6)</a></li>
+			
+				<li><a id="CatList_LinkList_0_Link_13" href="https://www.cnblogs.com/arnoldlu/category/1138562.html">性能优化(14)</a></li>
+			
+				</ul>
+			
+	
+		<h3>随笔档案<span style="font-size:11px;font-weight:normal">(167)</span></h3>
+		
+				<ul>
+			
+				<li><a id="CatList_LinkList_1_Link_0" href="https://www.cnblogs.com/arnoldlu/archive/2018/12.html">2018年12月 (1)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_1" href="https://www.cnblogs.com/arnoldlu/archive/2018/11.html">2018年11月 (4)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_2" href="https://www.cnblogs.com/arnoldlu/archive/2018/10.html">2018年10月 (2)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_3" href="https://www.cnblogs.com/arnoldlu/archive/2018/09.html">2018年9月 (4)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_4" href="https://www.cnblogs.com/arnoldlu/archive/2018/08.html">2018年8月 (4)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_5" href="https://www.cnblogs.com/arnoldlu/archive/2018/07.html">2018年7月 (8)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_6" href="https://www.cnblogs.com/arnoldlu/archive/2018/06.html">2018年6月 (2)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_7" href="https://www.cnblogs.com/arnoldlu/archive/2018/05.html">2018年5月 (7)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_8" href="https://www.cnblogs.com/arnoldlu/archive/2018/04.html">2018年4月 (4)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_9" href="https://www.cnblogs.com/arnoldlu/archive/2018/03.html">2018年3月 (2)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_10" href="https://www.cnblogs.com/arnoldlu/archive/2018/02.html">2018年2月 (9)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_11" href="https://www.cnblogs.com/arnoldlu/archive/2018/01.html">2018年1月 (7)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_12" href="https://www.cnblogs.com/arnoldlu/archive/2017/12.html">2017年12月 (8)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_13" href="https://www.cnblogs.com/arnoldlu/archive/2017/11.html">2017年11月 (6)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_14" href="https://www.cnblogs.com/arnoldlu/archive/2017/10.html">2017年10月 (8)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_15" href="https://www.cnblogs.com/arnoldlu/archive/2017/09.html">2017年9月 (13)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_16" href="https://www.cnblogs.com/arnoldlu/archive/2017/08.html">2017年8月 (3)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_17" href="https://www.cnblogs.com/arnoldlu/archive/2017/07.html">2017年7月 (6)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_18" href="https://www.cnblogs.com/arnoldlu/archive/2017/06.html">2017年6月 (20)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_19" href="https://www.cnblogs.com/arnoldlu/archive/2017/05.html">2017年5月 (7)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_20" href="https://www.cnblogs.com/arnoldlu/archive/2017/04.html">2017年4月 (4)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_21" href="https://www.cnblogs.com/arnoldlu/archive/2017/03.html">2017年3月 (13)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_22" href="https://www.cnblogs.com/arnoldlu/archive/2017/02.html">2017年2月 (5)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_23" href="https://www.cnblogs.com/arnoldlu/archive/2017/01.html">2017年1月 (7)</a></li>
+			
+				<li><a id="CatList_LinkList_1_Link_24" href="https://www.cnblogs.com/arnoldlu/archive/2016/12.html">2016年12月 (13)</a></li>
+			
+				</ul>
+			
+	
+		<h3>友情链接</h3>
+		
+				<ul>
+			
+				<li><a id="CatList_LinkList_2_Link_0" href="http://blog.csdn.net/sunao2002002" rel="nofollow">sunao2002002</a></li>
+			
+				</ul>
+			
+	</div><div id="sidebar_scorerank" class="sidebar-block">
+<h3>积分与排名</h3>
+<ul>
+	<li>
+		积分 -
+		126928
+	</li><li>
+		排名 -
+		2981
+	</li>
+</ul>
+</div><div id="sidebar_recentcomments" class="sidebar-block"><div id="recent_comments_wrap">
+<h3 class="catListTitle">最新评论</h3>
+<div class="RecentComment" id="RecentComments">
+	<div id="RecentCommentsBlock"><ul>
+        <li class="recent_comment_title"><a href="https://www.cnblogs.com/arnoldlu/p/9553995.html#4130604">1. Re:buildroot使用介绍</a></li>
+        <li class="recent_comment_body">写的太棒了  十分细致  值得品读</li>
+        <li class="recent_comment_author">--小黏瓜</li>
+        <li class="recent_comment_title"><a href="https://www.cnblogs.com/arnoldlu/p/6221608.html#3993703">2. Re:Android中关于cpu/cpuset/schedtune的应用</a></li>
+        <li class="recent_comment_body">set_cpuset_policy set_sched_policy 的区别，都设置了</li>
+        <li class="recent_comment_author">--奋斗牛牛</li>
+        <li class="recent_comment_title"><a href="https://www.cnblogs.com/arnoldlu/p/8335481.html#3957142">3. Re:Linux内存管理 (11)page引用计数</a></li>
+        <li class="recent_comment_body">加入lru，放到lru缓存数组的时候是引用计数加1，但是真正加到lru链表的时候，又会-1，所以，page的lru标志置为，引用计数可能为1，也可能为0。也就是说不一定+1</li>
+        <li class="recent_comment_author">--一辈子很短别委屈自己</li>
+        <li class="recent_comment_title"><a href="https://www.cnblogs.com/arnoldlu/p/7078266.html#3814557">4. Re:Linux时间子系统之六：高精度定时器（HRTIMER）的原理和实现</a></li>
+        <li class="recent_comment_body">楼主你好。hrtimer的这个高精度模式，可以通过menuconfig或者别的方式，手动配置吗</li>
+        <li class="recent_comment_author">--陈安</li>
+</ul>
+</div>
+</div>
+</div></div><div id="sidebar_topviewedposts" class="sidebar-block"><div id="topview_posts_wrap">
+<h3 class="catListTitle">阅读排行榜</h3>
+<div class="RecentComment" id="TopViewPosts"> 
+	<div id="TopViewPostsBlock"><ul><li><a href="https://www.cnblogs.com/arnoldlu/p/6241297.html">1. 系统级性能分析工具perf的介绍与使用(20809)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6497837.html">2. 开源HTTP解析器---http-parser和fast-http(7183)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6490860.html">3. JSON构造/解析（by C）---cJSON和json-c(6416)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7904242.html">4. NB-IoT协议及其PSM(5645)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6227843.html">5. 编译自己的Ubuntu内核(5428)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6612643.html">6. Linux内存使用情况以及内存泄露分析之工具与方法(4583)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7234443.html">7. Linux时间子系统之三：jiffies(3879)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6388151.html">8. Android/Linux Thermal框架分析及其Governor对比(3406)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6695451.html">9. Linux内核中的算法和数据结构(3323)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6208443.html">10. Android/Linux下CGroup框架分析及其使用(3315)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6291251.html">11. swap分析及其使用(3171)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6874328.html">12. 《嵌入式Linux内存使用与性能优化》笔记(2923)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8060121.html">13. Linux内存管理 (1)物理内存初始化(2803)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8087022.html">14. Linux内存管理 (2)页表的映射过程(2767)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7675666.html">15. Zephyr学习专题(2481)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8068286.html">16. Linux内存管理 (3)内核内存的布局图(2475)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6421317.html">17. 关于Linux虚拟化技术KVM的科普(2337)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7883663.html">18. 阅读ARM Memory(L1/L2/MMU)笔记(2212)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7553978.html">19. 数据分析之---Python可视化工具(1976)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8051674.html">20. Linux内存管理专题(1974)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8251333.html">21. Linux内存管理 (6)vmalloc(1948)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6214879.html">22. LISA介绍及其使用方法(1922)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8335475.html">23. Linux内存管理 (10)缺页中断处理(1913)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6253665.html">24. Suspend to RAM和Suspend to Idle分析，以及在HiKey上性能对比(1680)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6221354.html">25. DDR相关的低功耗技术之PASR、TCSR、DPD(1618)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8568090.html">26. Linux内存管理 (22)内存检测技术(slub_debug/kmemleak/kasan)(1606)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6344847.html">27. cpu_ops、suspend_ops、arm_idle_driver以及machine_restart/machine_power_off到底层PSCI Firmware分析(1545)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7145879.html">28. Linux时间子系统之二：Alarm Timer(1533)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6221608.html">29. Android中关于cpu/cpuset/schedtune的应用(1472)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6388112.html">30. Android/Linux Thermal Governor之IPA分析与使用(1415)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6372214.html">31. WireShark抓包工具使用(1360)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9462221.html">32. Linux CPU占用率监控工具小结(1329)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6288852.html">33. HiKey软硬件开发环境及其调试(1324)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6510641.html">34. 关于Linux虚拟化技术KVM的科普 科普三(From OenHan)(1288)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8659981.html">35. Linux中断管理 (1)Linux中断管理机制(1267)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7214270.html">36. Lauterbach TRACE32技巧小集(1250)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6266331.html">37. Android/Linux boot time分析优化(1246)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6510618.html">38. 关于Linux虚拟化技术KVM的科普 科普一(先用起来！)(1209)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9014365.html">39. ftrace利器之trace-cmd和kernelshark(1153)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8879800.html">40. Linux内核访问用户空间文件：get_fs()/set_fs()的使用(1145)</a></li></ul></div>
+</div>
+</div></div><div id="sidebar_topcommentedposts" class="sidebar-block"><div id="topfeedback_posts_wrap">
+<h3 class="catListTitle">评论排行榜</h3>
+<div class="RecentComment" id="TopCommentsPosts">
+	<div id="TopFeedbackPostsBlock"><ul><li><a href="https://www.cnblogs.com/arnoldlu/p/6221608.html">1. Android中关于cpu/cpuset/schedtune的应用(1)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7078266.html">2. Linux时间子系统之六：高精度定时器（HRTIMER）的原理和实现(1)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/9553995.html">3. buildroot使用介绍(1)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/8335481.html">4. Linux内存管理 (11)page引用计数(1)</a></li></ul></div>
+</div></div></div><div id="sidebar_topdiggedposts" class="sidebar-block"><div id="topdigg_posts_wrap">
+<h3 class="catListTitle">推荐排行榜</h3>
+<div class="RecentComment">
+	<div id="TopDiggPostsBlock"><ul><li><a href="https://www.cnblogs.com/arnoldlu/p/8251333.html">1. Linux内存管理 (6)vmalloc(2)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/6253665.html">2. Suspend to RAM和Suspend to Idle分析，以及在HiKey上性能对比(1)</a></li><li><a href="https://www.cnblogs.com/arnoldlu/p/7553978.html">3. 数据分析之---Python可视化工具(1)</a></li></ul></div>
+</div></div></div></div><script type="text/javascript">loadBlogSideColumn();</script>
+
+</div>
+</div>
+<div class="clear"></div>
+<div id="footer">
+
+<p id="footer">
+	Powered by: 
+	<br>
+	
+	<a id="Footer1_Hyperlink3" name="Hyperlink1" href="https://www.cnblogs.com/" style="font-family:Verdana;font-size:12px;">博客园</a>
+	<br>
+	Copyright © ArnoldLu
+</p>
+</div>
+</div>
+
+
+
+<iframe id="google_osd_static_frame_6967176961104" name="google_osd_static_frame" style="display: none; width: 0px; height: 0px;"></iframe></body></html>
